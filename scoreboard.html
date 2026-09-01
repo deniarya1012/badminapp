@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scoreboard Layar Utama - Turnamen Badminton</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%); 
+            color: #fff; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            display: flex; 
+            flex-direction: column;
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+            position: relative;
+            overflow: hidden;
+            padding-top: 50px;
+        }
+
+        /* Navigasi Utama */
+        .main-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 4, 40, 0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .main-nav a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 8px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .main-nav a:hover, .main-nav a.active {
+            background: #00f2fe;
+            color: #000428;
+            border-color: #00f2fe;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Tombol Fullscreen */
+        .btn-fullscreen {
+            position: absolute;
+            top: 75px;
+            right: 25px;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 12px 24px;
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 12px;
+            cursor: pointer;
+            backdrop-filter: blur(10px);
+            font-size: 1rem;
+            font-weight: 700;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+            z-index: 100;
+        }
+
+        .btn-fullscreen:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: #00f2fe;
+            box-shadow: 0 0 20px rgba(0, 242, 254, 0.6);
+            transform: scale(1.05);
+        }
+
+        /* Sembunyikan navigasi & tombol saat Fullscreen */
+        :fullscreen .btn-fullscreen, :-webkit-full-screen .btn-fullscreen,
+        :fullscreen .main-nav, :-webkit-full-screen .main-nav {
+            display: none !important;
+        }
+
+        /* Judul Turnamen */
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+        }
+
+        .header h1 {
+            font-size: 3rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 50%, #ffb703 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 30px rgba(0, 242, 254, 0.4);
+        }
+
+        /* Scoreboard Container */
+        .scoreboard-container { 
+            display: flex; 
+            justify-content: space-around; 
+            align-items: center; 
+            width: 90%; 
+            max-width: 1300px; 
+            background: rgba(255, 255, 255, 0.1); 
+            padding: 50px; 
+            border-radius: 20px; 
+            backdrop-filter: blur(10px); 
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.5);
+        }
+        
+        .team { display: flex; flex-direction: column; align-items: center; width: 45%; }
+        .team-name { font-size: 3.8rem; font-weight: bold; margin-bottom: 20px; text-transform: uppercase; text-align: center; }
+        .score { font-size: 17rem; font-weight: bold; line-height: 1; text-shadow: 0 10px 20px rgba(0,0,0,0.5); color: #00f2fe; }
+        .divider { font-size: 6rem; font-weight: bold; color: rgba(255,255,255,0.5); padding-bottom: 50px; }
+    </style>
+</head>
+<body>
+
+    <!-- Navigasi Utama -->
+    <nav class="main-nav">
+        <a href="index.html">🏆 Bagan Pertandingan</a>
+        <a href="scoreboard.html" class="active">📺 Display Scoreboard</a>
+        <a href="remote.html">📱 Remote Control</a>
+    </nav>
+
+    <!-- Tombol Fullscreen -->
+    <button class="btn-fullscreen" id="btnFullscreen" onclick="toggleFullScreen()">📺 Full Screen</button>
+
+    <!-- Judul Turnamen -->
+    <div class="header">
+        <h1>Turnamen Badminton Hari Radio ke 81</h1>
+    </div>
+
+    <!-- Papan Skor -->
+    <div class="scoreboard-container">
+        <div class="team">
+            <div class="team-name" id="nameA">TIM A</div>
+            <div class="score" id="scoreA">0</div>
+        </div>
+        <div class="divider">:</div>
+        <div class="team">
+            <div class="team-name" id="nameB">TIM B</div>
+            <div class="score" id="scoreB">0</div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJoXlc5EP9LmbINBvlJfsVJPDdlEgJY1o",
+            authDomain: "bagan-badminton.firebaseapp.com",
+            databaseURL: "https://bagan-badminton-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bagan-badminton",
+            storageBucket: "bagan-badminton.firebasestorage.app",
+            messagingSenderId: "776101992812",
+            appId: "1:776101992812:web:554e0e50d1528cc530fb49",
+            measurementId: "G-G0T4KYS4W2"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const scoreRef = db.ref('live_score');
+
+        // Terima Data Realtime dari Firebase
+        scoreRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.teamA !== undefined) document.getElementById('nameA').innerText = data.teamA;
+                if (data.teamB !== undefined) document.getElementById('nameB').innerText = data.teamB;
+                if (data.scoreA !== undefined) document.getElementById('scoreA').innerText = data.scoreA;
+                if (data.scoreB !== undefined) document.getElementById('scoreB').innerText = data.scoreB;
+            }
+        });
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+    </script>
+</body>
+</html>
