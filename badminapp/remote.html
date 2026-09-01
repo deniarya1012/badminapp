@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Remote Scoreboard Badminton</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%); 
+            color: #fff; 
+            font-family: 'Segoe UI', Roboto, sans-serif; 
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 85px 20px 30px 20px;
+        }
+
+        /* Navigasi Utama */
+        .main-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 4, 40, 0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 12px 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+        }
+
+        .main-nav a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 0.95rem;
+            padding: 8px 18px;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .main-nav a:hover, .main-nav a.active {
+            background: #00f2fe;
+            color: #000428;
+            border-color: #00f2fe;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        }
+
+        h2 { margin-bottom: 25px; text-transform: uppercase; letter-spacing: 2px; color: #00f2fe; }
+
+        .container { width: 100%; max-width: 450px; }
+
+        .team-box { 
+            background: rgba(255, 255, 255, 0.12); 
+            padding: 22px; 
+            margin-bottom: 20px; 
+            border-radius: 18px; 
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+            text-align: center;
+        }
+
+        input { 
+            font-size: 1.4rem; 
+            font-weight: bold;
+            text-align: center; 
+            width: 100%; 
+            padding: 10px; 
+            margin-bottom: 12px; 
+            border-radius: 10px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            background: rgba(0, 0, 0, 0.3);
+            color: #fff;
+            text-transform: uppercase;
+        }
+
+        .score-display { font-size: 4.5rem; font-weight: bold; margin: 10px 0; color: #ffb703; }
+        
+        .btn-group { display: flex; justify-content: center; gap: 15px; }
+
+        button.btn-score { 
+            font-size: 2.2rem; 
+            width: 70px; 
+            height: 70px; 
+            cursor: pointer; 
+            border-radius: 50%; 
+            border: none; 
+            background: #00f2fe; 
+            color: #000428; 
+            font-weight: bold;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+            transition: transform 0.1s ease;
+        }
+
+        button.btn-score:active { transform: scale(0.92); }
+
+        .btn-reset { 
+            font-size: 1.1rem; 
+            width: 100%; 
+            padding: 15px; 
+            margin-top: 10px; 
+            cursor: pointer; 
+            border-radius: 14px; 
+            border: none; 
+            background: #ff007f; 
+            color: white; 
+            font-weight: 800;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px rgba(255, 0, 127, 0.4);
+            transition: background 0.2s;
+        }
+
+        .btn-reset:active { transform: scale(0.98); }
+    </style>
+</head>
+<body>
+
+    <!-- Navigasi Utama -->
+    <nav class="main-nav">
+        <a href="index.html">🏆 Bagan Pertandingan</a>
+        <a href="scoreboard.html">📺 Display Scoreboard</a>
+        <a href="remote.html" class="active">📱 Remote Control</a>
+    </nav>
+
+    <h2>📱 Remote Controller</h2>
+    
+    <div class="container">
+        <!-- Tim A -->
+        <div class="team-box">
+            <input type="text" id="nameA" oninput="changeName('A')" value="TIM A">
+            <div class="score-display" id="scoreA">0</div>
+            <div class="btn-group">
+                <button class="btn-score" onclick="changeScore('A', -1)">-</button>
+                <button class="btn-score" onclick="changeScore('A', 1)">+</button>
+            </div>
+        </div>
+
+        <!-- Tim B -->
+        <div class="team-box">
+            <input type="text" id="nameB" oninput="changeName('B')" value="TIM B">
+            <div class="score-display" id="scoreB">0</div>
+            <div class="btn-group">
+                <button class="btn-score" onclick="changeScore('B', -1)">-</button>
+                <button class="btn-score" onclick="changeScore('B', 1)">+</button>
+            </div>
+        </div>
+
+        <!-- Tombol Reset -->
+        <button class="btn-reset" onclick="resetScore()">🔄 Reset Live Score</button>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJoXlc5EP9LmbINBvlJfsVJPDdlEgJY1o",
+            authDomain: "bagan-badminton.firebaseapp.com",
+            databaseURL: "https://bagan-badminton-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bagan-badminton",
+            storageBucket: "bagan-badminton.firebasestorage.app",
+            messagingSenderId: "776101992812",
+            appId: "1:776101992812:web:554e0e50d1528cc530fb49",
+            measurementId: "G-G0T4KYS4W2"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const scoreRef = db.ref('live_score');
+
+        let currentScores = { scoreA: 0, scoreB: 0 };
+
+        // Sinkronisasi data awal
+        scoreRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                if (data.teamA !== undefined) document.getElementById('nameA').value = data.teamA;
+                if (data.teamB !== undefined) document.getElementById('nameB').value = data.teamB;
+                if (data.scoreA !== undefined) {
+                    document.getElementById('scoreA').innerText = data.scoreA;
+                    currentScores.scoreA = data.scoreA;
+                }
+                if (data.scoreB !== undefined) {
+                    document.getElementById('scoreB').innerText = data.scoreB;
+                    currentScores.scoreB = data.scoreB;
+                }
+            }
+        });
+
+        function changeScore(team, value) {
+            let key = 'score' + team;
+            let newScore = (currentScores[key] || 0) + value;
+            if (newScore < 0) newScore = 0;
+            scoreRef.child(key).set(newScore);
+        }
+
+        function changeName(team) {
+            let newName = document.getElementById('name' + team).value;
+            scoreRef.child('team' + team).set(newName);
+        }
+
+        function resetScore() {
+            if (confirm("Apakah Anda yakin ingin mereset skor menjadi 0?")) {
+                scoreRef.child('scoreA').set(0);
+                scoreRef.child('scoreB').set(0);
+            }
+        }
+    </script>
+</body>
+</html>
