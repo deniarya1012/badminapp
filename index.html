@@ -1,0 +1,970 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bagan Pertandingan Badminton - Display TV & Mobile</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body {
+            background: linear-gradient(135deg, #000428 0%, #004e92 100%);
+            color: #ffffff;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            overflow-x: hidden;
+            position: relative;
+        }
+
+        /* Tombol Hamburger (Sembunyi di Desktop) */
+        .hamburger-btn {
+            display: none;
+        }
+
+        /* Navigasi Utama Desktop */
+        .main-nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(0, 4, 40, 0.85);
+            backdrop-filter: blur(12px);
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            padding: 15px 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .main-nav a {
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1.1rem;
+            padding: 12px 20px;
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            text-align: center;
+        }
+
+        .main-nav a:hover, .main-nav a.active {
+            background: #00f2fe;
+            color: #000428;
+            border-color: #00f2fe;
+            box-shadow: 0 0 15px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Container Tombol Kontrol */
+        .controls-container {
+            position: absolute;
+            top: 75px;
+            right: 25px;
+            display: flex;
+            gap: 15px;
+            z-index: 100;
+        }
+
+        .btn-control {
+            background: rgba(255, 255, 255, 0.18);
+            color: #fff;
+            padding: 12px 20px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 14px;
+            cursor: pointer;
+            backdrop-filter: blur(12px);
+            font-size: 1rem;
+            font-weight: 800;
+            transition: all 0.3s ease;
+            letter-spacing: 1px;
+        }
+
+        .btn-control:hover {
+            background: rgba(255, 255, 255, 0.35);
+            border-color: #00f2fe;
+            box-shadow: 0 0 25px rgba(0, 242, 254, 0.7);
+            transform: scale(1.05);
+        }
+
+        .btn-reset { display: none; }
+        .btn-reset:hover {
+            border-color: #ff007f;
+            box-shadow: 0 0 25px rgba(255, 0, 127, 0.7);
+        }
+
+        /* Sembunyikan navigasi & kontrol saat Fullscreen */
+        :fullscreen .controls-container, :-webkit-full-screen .controls-container,
+        :fullscreen .main-nav, :-webkit-full-screen .main-nav,
+        :fullscreen .hamburger-btn, :-webkit-full-screen .hamburger-btn {
+            display: none !important;
+        }
+
+        :fullscreen, :fullscreen * { cursor: none !important; }
+        :-webkit-full-screen, :-webkit-full-screen * { cursor: none !important; }
+
+        /* Pembungkus Konten Utama */
+        .main-content-wrapper {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
+            max-width: 2400px;
+            padding: 100px 20px 25px 20px;
+        }
+        
+        :fullscreen .main-content-wrapper, :-webkit-full-screen .main-content-wrapper {
+            padding: 15px;
+        }
+
+        /* Header Utama */
+        .header { text-align: center; margin-bottom: 20px; text-transform: uppercase; }
+        .header h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            letter-spacing: 3px;
+            background: linear-gradient(90deg, #00f2fe 0%, #4facfe 50%, #ffb703 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 35px rgba(0, 242, 254, 0.5);
+        }
+
+        /* Container Bagan Desktop (7 Kolom) */
+        .bracket-container {
+            display: grid;
+            grid-template-columns: 1fr 0.95fr 0.9fr 1.1fr 0.9fr 0.95fr 1fr; 
+            gap: 24px;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .round, .center-column {
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            min-height: 960px;
+            position: relative;
+        }
+
+        .round-title {
+            text-align: center;
+            font-size: 1.25rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: #00f2fe;
+            margin-bottom: 12px;
+            text-shadow: 0 0 12px rgba(0, 242, 254, 0.5);
+            height: 30px;
+            flex-shrink: 0;
+        }
+
+        .round-body {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            position: relative;
+            width: 100%;
+        }
+
+        .center-body {
+            justify-content: center;
+        }
+
+        /* Struktur Pasangan Match untuk Garis Penghubung */
+        .match-pair {
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            width: 100%;
+        }
+
+        .round-8-pair {
+            height: 100%;
+            justify-content: space-around;
+        }
+
+        /* GARIS PENGHUBUNG BAGAN (CYAN - KIRI) */
+        .pair-left { position: relative; }
+        .pair-left::after {
+            content: '';
+            position: absolute;
+            right: -12px;
+            top: 50px;
+            bottom: 50px;
+            width: 12px;
+            border-right: 2px solid #00f2fe;
+            border-top: 2px solid #00f2fe;
+            border-bottom: 2px solid #00f2fe;
+            border-top-right-radius: 6px;
+            border-bottom-right-radius: 6px;
+            pointer-events: none;
+            box-shadow: 2px 0 8px rgba(0, 242, 254, 0.4);
+        }
+
+        .pair-left::before {
+            content: '';
+            position: absolute;
+            right: -24px;
+            top: 50%;
+            width: 12px;
+            height: 2px;
+            background: #00f2fe;
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+        }
+
+        .round-8-pair.pair-left::after {
+            top: 25% !important;
+            bottom: 25% !important;
+        }
+
+        .match-left-single { position: relative; }
+        .match-left-single::after {
+            content: '';
+            position: absolute;
+            right: -24px;
+            top: 50%;
+            width: 24px;
+            height: 2px;
+            background: #00f2fe;
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(0, 242, 254, 0.4);
+        }
+
+        /* GARIS PENGHUBUNG BAGAN (MAGENTA - KANAN) */
+        .pair-right { position: relative; }
+        .pair-right::after {
+            content: '';
+            position: absolute;
+            left: -12px;
+            top: 50px;
+            bottom: 50px;
+            width: 12px;
+            border-left: 2px solid #ff007f;
+            border-top: 2px solid #ff007f;
+            border-bottom: 2px solid #ff007f;
+            border-top-left-radius: 6px;
+            border-bottom-left-radius: 6px;
+            pointer-events: none;
+            box-shadow: -2px 0 8px rgba(255, 0, 127, 0.4);
+        }
+
+        .pair-right::before {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 50%;
+            width: 12px;
+            height: 2px;
+            background: #ff007f;
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
+        }
+
+        .round-8-pair.pair-right::after {
+            top: 25% !important;
+            bottom: 25% !important;
+        }
+
+        .match-right-single { position: relative; }
+        .match-right-single::after {
+            content: '';
+            position: absolute;
+            left: -24px;
+            top: 50%;
+            width: 24px;
+            height: 2px;
+            background: #ff007f;
+            pointer-events: none;
+            box-shadow: 0 0 8px rgba(255, 0, 127, 0.4);
+        }
+
+        /* Box Match */
+        .match-box {
+            background: rgba(255, 255, 255, 0.14);
+            border: 2px solid rgba(255, 255, 255, 0.28);
+            border-radius: 14px;
+            backdrop-filter: blur(16px);
+            box-shadow: 0 10px 30px 0 rgba(0, 0, 0, 0.45);
+            padding: 8px;
+            width: 100%;
+            transition: all 0.3s ease;
+            position: relative;
+            z-index: 2;
+        }
+
+        .team-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: rgba(0, 0, 0, 0.42);
+            border-radius: 10px;
+            padding: 6px 10px;
+            margin: 4px 0;
+            border-left: 6px solid #00f2fe;
+        }
+
+        .team-row.away { border-left-color: #ff007f; }
+
+        .team-details {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            width: 100%;
+            overflow: hidden;
+        }
+
+        .team-input {
+            background: transparent;
+            border: none;
+            color: #ffffff;
+            font-size: 1.05rem;
+            font-weight: 800;
+            width: 100%;
+            outline: none;
+            font-family: inherit;
+            text-transform: uppercase;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .player-input {
+            background: transparent;
+            border: none;
+            color: rgba(255, 255, 255, 0.75);
+            font-size: 0.8rem;
+            font-weight: 600;
+            width: 100%;
+            outline: none;
+            font-family: inherit;
+            white-space: nowrap;
+            text-overflow: ellipsis;
+        }
+
+        .player-input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .score-input {
+            background: rgba(255, 255, 255, 0.22);
+            border: 2px solid rgba(255, 255, 255, 0.4);
+            border-radius: 8px;
+            color: #ffffff;
+            font-size: 1.4rem;
+            font-weight: 900;
+            text-align: center;
+            width: 46px;
+            height: 46px;
+            outline: none;
+            margin-left: 8px;
+            flex-shrink: 0;
+        }
+
+        input[readonly] { cursor: default; user-select: none; }
+
+        .final-wrapper {
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            position: relative;
+            z-index: 2;
+        }
+
+        .final-title {
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 900;
+            letter-spacing: 2px;
+            color: #ffb703;
+            margin-bottom: 8px;
+            text-shadow: 0 0 12px rgba(255, 183, 3, 0.6);
+        }
+
+        .final-box { width: 100%; border: 3px solid rgba(255, 215, 0, 0.85); box-shadow: 0 0 35px rgba(255, 215, 0, 0.4); }
+
+        .champion-box {
+            position: absolute;
+            top: 15px;
+            width: 100%;
+            background: linear-gradient(135deg, rgba(255, 183, 3, 0.3) 0%, rgba(255, 215, 0, 0.12) 100%);
+            border: 3px solid #ffb703;
+            border-radius: 20px;
+            backdrop-filter: blur(16px);
+            padding: 14px;
+            text-align: center;
+            box-shadow: 0 0 40px rgba(255, 183, 3, 0.5);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 2px;
+            z-index: 5;
+        }
+
+        .trophy-icon { font-size: 3.2rem; line-height: 1; margin-bottom: 2px; }
+        .champion-title { font-size: 1.15rem; letter-spacing: 2px; color: #ffb703; font-weight: 900; text-transform: uppercase; }
+        .champion-input { text-align: center; font-size: 1.4rem; font-weight: 900; color: #ffffff; margin-top: 2px; }
+        .champion-player-input { text-align: center; font-size: 0.9rem; color: rgba(255, 255, 255, 0.85); }
+
+        /* Mobile Layout */
+        @media (max-width: 1200px) {
+            .pair-left::after, .pair-left::before,
+            .pair-right::after, .pair-right::before,
+            .match-left-single::after, .match-right-single::after {
+                display: none !important;
+            }
+
+            .hamburger-btn {
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                position: fixed;
+                top: 15px;
+                right: 15px;
+                width: 48px;
+                height: 48px;
+                background: rgba(0, 4, 40, 0.9);
+                color: #00f2fe;
+                border: 2px solid #00f2fe;
+                border-radius: 14px;
+                font-size: 1.6rem;
+                cursor: pointer;
+                z-index: 1001;
+                backdrop-filter: blur(10px);
+                box-shadow: 0 0 15px rgba(0, 242, 254, 0.4);
+            }
+
+            .main-nav {
+                display: none;
+                flex-direction: column;
+                position: fixed;
+                top: 72px;
+                right: 15px;
+                left: auto;
+                width: 240px;
+                background: rgba(0, 4, 40, 0.95);
+                border: 1px solid rgba(0, 242, 254, 0.4);
+                border-radius: 16px;
+                padding: 15px;
+                gap: 10px;
+                box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+            }
+
+            .main-nav.active-menu { display: flex; }
+            .main-nav a { padding: 12px; font-size: 0.95rem; width: 100%; }
+
+            .header { margin-bottom: 20px; }
+            .header h1 { font-size: 2.1rem; }
+
+            .controls-container {
+                position: relative;
+                top: auto; right: auto;
+                width: 100%;
+                justify-content: center;
+                margin-top: 10px;
+                margin-bottom: 25px;
+                flex-wrap: wrap;
+                gap: 10px;
+            }
+            
+            .btn-control { padding: 12px 20px; font-size: 1rem; }
+
+            .main-content-wrapper { padding: 75px 12px 30px 12px; justify-content: flex-start; }
+
+            .bracket-container { display: flex; flex-direction: column; gap: 28px; }
+            .round, .center-column { min-height: auto; gap: 14px; }
+            .champion-box { position: relative; top: auto; margin-bottom: 15px; }
+            .round-title { font-size: 1.45rem; height: auto; }
+            
+            .round-16-left { order: 1; }
+            .round-16-right { order: 2; }
+            .round-8-left { order: 3; }
+            .round-8-right { order: 4; }
+            .round-semi-left { order: 5; }
+            .round-semi-right { order: 6; }
+            .center-column { order: 7; gap: 25px; }
+
+            .team-input { font-size: 1.25rem; }
+            .player-input { font-size: 0.9rem; }
+            .score-input { width: 50px; height: 50px; font-size: 1.45rem; }
+            .trophy-icon { font-size: 3.5rem; }
+            .champion-title { font-size: 1.2rem; }
+            .champion-input { font-size: 1.5rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleMenu()">☰</button>
+
+    <nav class="main-nav" id="mainNav">
+        <a href="index.html" class="active">🏆 Bagan Pertandingan</a>
+        <a href="scoreboard.html">📺 Display Scoreboard</a>
+        <a href="remote.html">📱 Remote Control</a>
+    </nav>
+
+    <div class="controls-container">
+        <button class="btn-control" id="btn-admin" onclick="toggleAdminMode()">🔒 Login Panitia</button>
+        <button class="btn-control btn-reset" id="btn-reset" onclick="resetData()">🗑️ Reset Data</button>
+        <button class="btn-control" onclick="toggleFullScreen()">📺 Full Screen</button>
+    </div>
+
+    <div class="main-content-wrapper">
+        <div class="header">
+            <h1>Turnamen Badminton Hari Radio ke 81</h1>
+        </div>
+
+        <div class="bracket-container">
+            <!-- 16 Besar Kiri -->
+            <div class="round round-16-left">
+                <div class="round-title">16 Besar (A)</div>
+                <div class="round-body">
+                    <div class="match-pair pair-left">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM A1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM A2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM B1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM B2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="match-pair pair-left">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM C1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM C2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM D1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM D2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8 Besar Kiri -->
+            <div class="round round-8-left">
+                <div class="round-title">8 Besar (Kiri)</div>
+                <div class="round-body">
+                    <div class="match-pair pair-left round-8-pair">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG A">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG B">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG C">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG D">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Semifinal Kiri -->
+            <div class="round round-semi-left">
+                <div class="round-title">Semifinal (Kiri)</div>
+                <div class="round-body">
+                    <div class="match-box match-left-single">
+                        <div class="team-row">
+                            <div class="team-details">
+                                <input type="text" class="team-input" value="SEMIFINALIS 1">
+                                <input type="text" class="player-input" value="Pemain 1">
+                                <input type="text" class="player-input" value="Pemain 2">
+                            </div>
+                            <input type="number" class="score-input" value="0">
+                        </div>
+                        <div class="team-row away">
+                            <div class="team-details">
+                                <input type="text" class="team-input" value="SEMIFINALIS 2">
+                                <input type="text" class="player-input" value="Pemain 1">
+                                <input type="text" class="player-input" value="Pemain 2">
+                            </div>
+                            <input type="number" class="score-input" value="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kolom Tengah (Juara & Final) -->
+            <div class="center-column">
+                <div class="round-title">Babak Final</div>
+                <div class="round-body center-body">
+                    <div class="champion-box">
+                        <div class="trophy-icon">🏆</div>
+                        <div class="champion-title">Juara Utama</div>
+                        <input type="text" class="team-input champion-input" value="NAMA JUARA">
+                        <input type="text" class="player-input champion-player-input" value="Pemain 1">
+                        <input type="text" class="player-input champion-player-input" value="Pemain 2">
+                    </div>
+                    <div class="final-wrapper">
+                        <div class="final-title">FINAL</div>
+                        <div class="match-box final-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="FINALIS KIRI">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="FINALIS KANAN">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Semifinal Kanan -->
+            <div class="round round-semi-right">
+                <div class="round-title">Semifinal (Kanan)</div>
+                <div class="round-body">
+                    <div class="match-box match-right-single">
+                        <div class="team-row">
+                            <div class="team-details">
+                                <input type="text" class="team-input" value="SEMIFINALIS 3">
+                                <input type="text" class="player-input" value="Pemain 1">
+                                <input type="text" class="player-input" value="Pemain 2">
+                            </div>
+                            <input type="number" class="score-input" value="0">
+                        </div>
+                        <div class="team-row away">
+                            <div class="team-details">
+                                <input type="text" class="team-input" value="SEMIFINALIS 4">
+                                <input type="text" class="player-input" value="Pemain 1">
+                                <input type="text" class="player-input" value="Pemain 2">
+                            </div>
+                            <input type="number" class="score-input" value="0">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 8 Besar Kanan -->
+            <div class="round round-8-right">
+                <div class="round-title">8 Besar (Kanan)</div>
+                <div class="round-body">
+                    <div class="match-pair pair-right round-8-pair">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG E">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG F">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG G">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="PEMENANG H">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 16 Besar Kanan -->
+            <div class="round round-16-right">
+                <div class="round-title">16 Besar (B)</div>
+                <div class="round-body">
+                    <div class="match-pair pair-right">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM E1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM E2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM F1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM F2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="match-pair pair-right">
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM G1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM G2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                        <div class="match-box">
+                            <div class="team-row">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM H1">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                            <div class="team-row away">
+                                <div class="team-details">
+                                    <input type="text" class="team-input" value="TIM H2">
+                                    <input type="text" class="player-input" value="Pemain 1">
+                                    <input type="text" class="player-input" value="Pemain 2">
+                                </div>
+                                <input type="number" class="score-input" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-database.js"></script>
+
+    <script>
+        const ADMIN_PIN = "1234";
+        let isAdmin = false;
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyAJoXlc5EP9LmbINBvlJfsVJPDdlEgJY1o",
+            authDomain: "bagan-badminton.firebaseapp.com",
+            databaseURL: "https://bagan-badminton-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "bagan-badminton",
+            storageBucket: "bagan-badminton.firebasestorage.app",
+            messagingSenderId: "776101992812",
+            appId: "1:776101992812:web:554e0e50d1528cc530fb49",
+            measurementId: "G-G0T4KYS4W2"
+        };
+
+        if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+        const db = firebase.database();
+        const bracketRef = db.ref('badminton_bracket');
+
+        const allInputs = document.querySelectorAll('input');
+
+        function setReadOnlyState(isReadOnly) {
+            allInputs.forEach(input => input.readOnly = isReadOnly);
+        }
+        setReadOnlyState(true);
+
+        allInputs.forEach((input, index) => {
+            input.addEventListener('input', () => {
+                if (isAdmin) {
+                    bracketRef.child(index).set(input.value);
+                }
+            });
+        });
+
+        bracketRef.on('value', (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                Object.keys(data).forEach((index) => {
+                    if (allInputs[index] && allInputs[index].value !== data[index]) {
+                        allInputs[index].value = data[index];
+                    }
+                });
+            }
+        });
+
+        function toggleAdminMode() {
+            if (!isAdmin) {
+                const inputPin = prompt("Masukkan PIN Panitia untuk mengedit:");
+                if (inputPin === ADMIN_PIN) {
+                    isAdmin = true;
+                    setReadOnlyState(false);
+                    document.getElementById('btn-admin').innerText = "🔓 Keluar Panitia";
+                    document.getElementById('btn-reset').style.display = "inline-block";
+                    alert("Akses diberikan! Anda sekarang dapat mengedit bagan.");
+                } else if (inputPin !== null) {
+                    alert("PIN Salah! Akses ditolak.");
+                }
+            } else {
+                isAdmin = false;
+                setReadOnlyState(true);
+                document.getElementById('btn-admin').innerText = "🔒 Login Panitia";
+                document.getElementById('btn-reset').style.display = "none";
+                alert("Anda telah keluar dari Mode Panitia.");
+            }
+        }
+
+        function resetData() {
+            if (!isAdmin) return;
+            if (confirm("Apakah Anda yakin ingin mereset bagan di SEMUA device?")) {
+                bracketRef.remove().then(() => location.reload());
+            }
+        }
+
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else if (document.exitFullscreen) {
+                document.exitFullscreen();
+            }
+        }
+
+        /* Fungsi Buka/Tutup Menu Mobile */
+        function toggleMenu() {
+            const nav = document.getElementById('mainNav');
+            const btn = document.getElementById('hamburgerBtn');
+            nav.classList.toggle('active-menu');
+            
+            if (nav.classList.contains('active-menu')) {
+                btn.innerText = '✕';
+            } else {
+                btn.innerText = '☰';
+            }
+        }
+    </script>
+</body>
+</html>
